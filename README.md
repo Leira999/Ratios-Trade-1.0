@@ -1,0 +1,1 @@
+calcular ratios entre pares
