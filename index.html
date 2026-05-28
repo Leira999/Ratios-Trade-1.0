@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CEDEAR Ratio Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0d1117;
+    --bg2: #161b22;
+    --bg3: #0d1117;
+    --border: #21262d;
+    --border2: #30363d;
+    --text: #e6edf3;
+    --muted: #8b949e;
+    --blue: #58a6ff;
+    --green: #238636;
+    --green-light: #3fb950;
+    --red: #da3633;
+    --cyan: #00ccff;
+    --yellow: #ffaa00;
+    --font: 'IBM Plex Mono', monospace;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    min-height: 100vh;
+    padding: 24px 16px 48px;
+    font-size: 13px;
+  }
+
+  /* HEADER */
+  .header { margin-bottom: 24px; }
+  .header-sub { font-size: 11px; letter-spacing: 4px; color: var(--blue); text-transform: uppercase; margin-bottom: 4px; }
+  .header h1 { font-size: 22px; font-weight: 700; letter-spacing: 1px; }
+  .header p { font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+  /* TOAST */
+  #toast {
+    display: none;
+    border-radius: 6px;
+    padding: 8px 14px;
+    margin-bottom: 16px;
+    font-size: 13px;
+    transition: opacity .3s;
+  }
+  #toast.ok  { background: #1a2e1a; border: 1px solid var(--green); color: var(--green-light); }
+  #toast.err { background: #3d1e1e; border: 1px solid #ff4466; color: #ff8899; }
+
+  /* TABS */
+  .tabs { display: flex; gap: 4px; margin-bottom: 20px; border-bottom: 1px solid var(--border); }
+  .tab-btn {
+    background: transparent;
+    border: 1px solid transparent;
+    border-bottom: none;
+    border-radius: 6px 6px 0 0;
+    color: var(--muted);
+    padding: 8px 14px;
+    font-size: 12px;
+    cursor: pointer;
+    font-family: var(--font);
+    margin-bottom: -1px;
+    transition: color .2s;
+  }
+  .tab-btn.active {
+    background: var(--bg2);
+    border-color: var(--border2);
+    border-bottom-color: var(--bg2);
+    color: var(--blue);
+  }
+
+  /* PANELS */
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* CARDS */
+  .card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px;
+    margin-bottom: 12px;
+  }
+  .card-title { font-size: 12px; color: var(--blue); margin-bottom: 10px; letter-spacing: 1px; }
+
+  /* INPUTS */
+  .field-label { font-size: 11px; color: var(--muted); display: block; margin-bottom: 4px; }
+  input[type="number"], input[type="text"], input[type="date"] {
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    border-radius: 6px;
+    color: var(--text);
+    padding: 6px 10px;
+    font-size: 13px;
+    font-family: var(--font);
+    width: 100%;
+    outline: none;
+    transition: border-color .2s;
+  }
+  input:focus { border-color: var(--blue); }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr auto; gap: 10px; align-items: end; }
+  .grid-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 12px; }
+
+  /* STAT BOX */
+  .stat-box { background: var(--bg3); border-radius: 6px; padding: 8px 10px; }
+  .stat-label { font-size: 10px; color: var(--muted); margin-bottom: 2px; }
+  .stat-val { font-size: 14px; font-weight: 600; }
+
+  /* RATIO PREVIEW */
+  .ratio-preview { margin-top: 8px; font-size: 12px; color: var(--green-light); min-height: 18px; }
+
+  /* BUTTONS */
+  .btn {
+    border: none;
+    border-radius: 6px;
+    color: #fff;
+    padding: 8px 18px;
+    font-size: 13px;
+    cursor: pointer;
+    font-family: var(--font);
+    font-weight: 500;
+    transition: opacity .2s;
+  }
+  .btn:hover { opacity: .85; }
+  .btn-green  { background: var(--green); }
+  .btn-red    { background: #6e3830; }
+  .btn-full   { width: 100%; padding: 10px 0; font-size: 14px; margin-top: 16px; }
+  .btn-delete {
+    background: transparent;
+    border: 1px solid #3d1e1e;
+    color: #ff6677;
+    border-radius: 5px;
+    padding: 4px 10px;
+    cursor: pointer;
+    font-size: 11px;
+    font-family: var(--font);
+  }
+
+  /* DATE ROW */
+  .date-row { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+  .date-row label { font-size: 12px; color: var(--muted); white-space: nowrap; }
+  .date-row input { width: 150px; }
+
+  /* SIGNAL BADGE */
+  .signal-badge {
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    border: 1px solid;
+    white-space: nowrap;
+  }
+
+  /* ANALYSIS CARD HEADER */
+  .analysis-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+  .pair-name { font-size: 15px; font-weight: 700; }
+  .pair-sep { color: var(--muted); margin: 0 6px; }
+
+  /* MINI CHART */
+  .chart-wrap { margin-bottom: 8px; }
+  .chart-legend { font-size: 10px; color: var(--muted); margin-top: 4px; }
+  .chart-legend .c1 { color: var(--cyan); }
+  .chart-legend .c2 { color: var(--yellow); }
+
+  /* RANGE LINE */
+  .range-line { font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+  /* LEGEND BOX */
+  .legend-box { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 14px; font-size: 11px; color: var(--muted); line-height: 1.8; margin-top: 4px; }
+  .legend-box .title { color: var(--text); font-weight: 600; margin-bottom: 6px; }
+
+  /* HISTORIAL TABLE */
+  .hist-title { font-size: 13px; color: var(--blue); margin-bottom: 8px; letter-spacing: 1px; }
+  .hist-section { margin-bottom: 20px; }
+  .table-wrap { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th { padding: 8px 12px; text-align: left; color: var(--muted); font-weight: 500; border-bottom: 1px solid var(--border); }
+  td { padding: 7px 12px; border-bottom: 1px solid var(--bg); }
+  tr:last-child td { border-bottom: none; }
+
+  /* PAIRS LIST */
+  .pair-row { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+  .add-title { font-size: 13px; font-weight: 600; margin-bottom: 12px; }
+  .pairs-title { font-size: 13px; font-weight: 600; margin: 20px 0 10px; }
+
+  /* TIPS BOX */
+  .tips-box { margin-top: 20px; background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 14px; font-size: 11px; color: var(--muted); line-height: 1.8; }
+  .tips-box .title { color: var(--text); font-weight: 600; margin-bottom: 6px; }
+  .tips-box .tip-blue { color: var(--blue); margin-top: 8px; }
+
+  /* FOOTER */
+  .footer { margin-top: 32px; font-size: 10px; color: #484f58; text-align: center; }
+
+  /* EMPTY */
+  .empty { font-size: 12px; color: var(--muted); padding: 12px 0; }
+
+  .no-data { font-size: 12px; color: var(--muted); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-sub">BYMA · CEDEARs</div>
+  <h1>RATIO TRACKER</h1>
+  <p>Detectá oportunidades de arbitraje entre pares de CEDEARs</p>
+</div>
+
+<div id="toast"></div>
+
+<div class="tabs">
+  <button class="tab-btn active" onclick="switchTab('cargar')">📥 Cargar Precios</button>
+  <button class="tab-btn" onclick="switchTab('analisis')">📊 Análisis</button>
+  <button class="tab-btn" onclick="switchTab('historial')">📋 Historial</button>
+  <button class="tab-btn" onclick="switchTab('pares')">⚙️ Pares</button>
+</div>
+
+<!-- PANEL: CARGAR -->
+<div id="panel-cargar" class="panel active">
+  <div class="date-row">
+    <label>Fecha:</label>
+    <input type="date" id="input-fecha">
+  </div>
+  <div id="cargar-pares"></div>
+  <button class="btn btn-green btn-full" onclick="registrarDia()">✓ Registrar precios del día</button>
+</div>
+
+<!-- PANEL: ANÁLISIS -->
+<div id="panel-analisis" class="panel">
+  <div id="analisis-content"></div>
+</div>
+
+<!-- PANEL: HISTORIAL -->
+<div id="panel-historial" class="panel">
+  <div id="historial-content"></div>
+  <button class="btn btn-red" onclick="limpiarHistorial()">🗑 Borrar todo el historial</button>
+</div>
+
+<!-- PANEL: PARES -->
+<div id="panel-pares" class="panel">
+  <div class="add-title">Agregar nuevo par</div>
+  <div class="grid-3">
+    <div>
+      <label class="field-label">CEDEAR 1</label>
+      <input type="text" id="nuevo-c1" placeholder="ej: AAPL" maxlength="6">
+    </div>
+    <div>
+      <label class="field-label">CEDEAR 2</label>
+      <input type="text" id="nuevo-c2" placeholder="ej: TSLA" maxlength="6">
+    </div>
+    <button class="btn btn-green" onclick="agregarPar()">+ Agregar</button>
+  </div>
+  <div class="pairs-title">Pares activos</div>
+  <div id="pares-lista"></div>
+  <div class="tips-box">
+    <div class="title">💡 CEDEARs sugeridos para ratios</div>
+    <div>Tecnología: MSFT, AAPL, GOOGL, META, AMZN</div>
+    <div>Finanzas/Locales: MELI, SUPV, BMA, GGAL</div>
+    <div>Consumo: MCD, KO, PEP, WMT</div>
+    <div>Energía/Autos: TSLA, NIO, XOM</div>
+    <div class="tip-blue">Tip: elegí pares con alta correlación histórica para mejores señales.</div>
+  </div>
+</div>
+
+<div class="footer">
+  Los datos se guardan en tu navegador (localStorage) · Solo con fines educativos · No es asesoramiento financiero
+</div>
+
+<script>
+// ─── STATE ────────────────────────────────────────────────────────────────────
+const STORAGE_KEY = 'cedear_tracker_v2';
+
+let state = {
+  pares: [
+    { id: 1, cedear1: 'MSFT', cedear2: 'MELI' },
+    { id: 2, cedear1: 'NFLX', cedear2: 'SUPV' },
+    { id: 3, cedear1: 'MCD',  cedear2: 'NIO'  },
+    { id: 4, cedear1: 'GE',   cedear2: 'SUPV' },
+  ],
+  historial: {}
+};
+
+// ─── PERSIST ──────────────────────────────────────────────────────────────────
+function cargarEstado() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const data = JSON.parse(raw);
+      if (data.pares)    state.pares    = data.pares;
+      if (data.historial) state.historial = data.historial;
+    }
+  } catch(e) {}
+}
+
+function guardarEstado() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch(e) {}
+}
+
+// ─── STATS ────────────────────────────────────────────────────────────────────
+function calcStats(vals) {
+  if (vals.length < 2) return null;
+  const n    = vals.length;
+  const media = vals.reduce((a,b) => a+b, 0) / n;
+  const std  = Math.sqrt(vals.reduce((a,b) => a + Math.pow(b-media,2), 0) / n);
+  return { media, std, min: Math.min(...vals), max: Math.max(...vals) };
+}
+
+function getSenal(ratio, stats) {
+  if (!stats || stats.std === 0) return null;
+  const z = (ratio - stats.media) / stats.std;
+  if (z < -2) return { tipo:'COMPRAR', fuerza:'FUERTE', icon:'▲', color:'#00ff88', bg:'#0d2e1a', bc:'#238636' };
+  if (z < -1) return { tipo:'COMPRAR', fuerza:'DÉBIL',  icon:'▲', color:'#66ffaa', bg:'#0d2e1a', bc:'#238636' };
+  if (z >  2) return { tipo:'VENDER',  fuerza:'FUERTE', icon:'▼', color:'#ff4466', bg:'#2e0d0d', bc:'#da3633' };
+  if (z >  1) return { tipo:'VENDER',  fuerza:'DÉBIL',  icon:'▼', color:'#ff8899', bg:'#2e0d0d', bc:'#da3633' };
+  return { tipo:'NEUTRO', fuerza:'', icon:'●', color:'#888899', bg:'#1c1c2e', bc:'#444' };
+}
+
+// ─── MINI CHART ───────────────────────────────────────────────────────────────
+function miniChart(datos, media) {
+  const W = 200, H = 50;
+  if (datos.length < 2) return `<span style="color:#444;font-size:11px">Sin datos suficientes</span>`;
+  const mn = Math.min(...datos) * 0.999;
+  const mx = Math.max(...datos) * 1.001;
+  const sx = W / (datos.length - 1);
+  const sy = v => H - ((v - mn) / (mx - mn)) * H;
+  const pts = datos.map((v,i) => `${(i*sx).toFixed(1)},${sy(v).toFixed(1)}`).join(' ');
+  const my = sy(media).toFixed(1);
+  const lx = ((datos.length-1)*sx).toFixed(1);
+  const ly = sy(datos[datos.length-1]).toFixed(1);
+  return `<svg width="${W}" height="${H}" style="display:block">
+    <polyline points="${pts}" fill="none" stroke="#00ccff" stroke-width="1.5"/>
+    <line x1="0" y1="${my}" x2="${W}" y2="${my}" stroke="#ffaa00" stroke-width="1" stroke-dasharray="4,3"/>
+    <circle cx="${lx}" cy="${ly}" r="3" fill="#00ccff"/>
+  </svg>`;
+}
+
+// ─── TOAST ────────────────────────────────────────────────────────────────────
+let toastTimer;
+function toast(msg, tipo='ok') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = tipo;
+  el.style.display = 'block';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { el.style.display='none'; }, 2500);
+}
+
+// ─── TABS ─────────────────────────────────────────────────────────────────────
+function switchTab(name) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('panel-'+name).classList.add('active');
+  document.querySelectorAll('.tab-btn').forEach(b => {
+    if (b.getAttribute('onclick').includes("'"+name+"'")) b.classList.add('active');
+  });
+  if (name === 'analisis')  renderAnalisis();
+  if (name === 'historial') renderHistorial();
+  if (name === 'pares')     renderPares();
+}
+
+// ─── RENDER: CARGAR ───────────────────────────────────────────────────────────
+function renderCargar() {
+  // Set today's date
+  const hoy = new Date().toISOString().split('T')[0];
+  document.getElementById('input-fecha').value = hoy;
+
+  const cont = document.getElementById('cargar-pares');
+  cont.innerHTML = state.pares.map(par => `
+    <div class="card" id="card-par-${par.id}">
+      <div class="card-title">${par.cedear1} / ${par.cedear2}</div>
+      <div class="grid-2">
+        <div>
+          <label class="field-label">Precio ${par.cedear1} ($)</label>
+          <input type="number" id="p1-${par.id}" placeholder="ej: 20750" oninput="actualizarPreview(${par.id})">
+        </div>
+        <div>
+          <label class="field-label">Precio ${par.cedear2} ($)</label>
+          <input type="number" id="p2-${par.id}" placeholder="ej: 20380" oninput="actualizarPreview(${par.id})">
+        </div>
+      </div>
+      <div class="ratio-preview" id="preview-${par.id}"></div>
+    </div>
+  `).join('');
+}
+
+function actualizarPreview(id) {
+  const p1 = parseFloat(document.getElementById('p1-'+id).value);
+  const p2 = parseFloat(document.getElementById('p2-'+id).value);
+  const el = document.getElementById('preview-'+id);
+  if (p1 > 0 && p2 > 0) {
+    el.textContent = 'Ratio calculado: ' + (p1/p2).toFixed(5);
+  } else {
+    el.textContent = '';
+  }
+}
+
+function registrarDia() {
+  const fecha = document.getElementById('input-fecha').value;
+  if (!fecha) { toast('Seleccioná una fecha', 'err'); return; }
+  let count = 0;
+  state.pares.forEach(par => {
+    const p1 = parseFloat(document.getElementById('p1-'+par.id)?.value);
+    const p2 = parseFloat(document.getElementById('p2-'+par.id)?.value);
+    if (!p1 || !p2 || p2 === 0) return;
+    const ratio = parseFloat((p1/p2).toFixed(5));
+    if (!state.historial[par.id]) state.historial[par.id] = [];
+    const idx = state.historial[par.id].findIndex(r => r.fecha === fecha);
+    if (idx >= 0) {
+      state.historial[par.id][idx] = { fecha, p1, p2, ratio };
+    } else {
+      state.historial[par.id].push({ fecha, p1, p2, ratio });
+      state.historial[par.id].sort((a,b) => a.fecha.localeCompare(b.fecha));
+    }
+    count++;
+  });
+  if (count === 0) { toast('Ingresá al menos un par completo', 'err'); return; }
+  guardarEstado();
+  toast('✓ ' + count + ' par(es) registrado(s)');
+  // Clear inputs
+  state.pares.forEach(par => {
+    const i1 = document.getElementById('p1-'+par.id);
+    const i2 = document.getElementById('p2-'+par.id);
+    const pv = document.getElementById('preview-'+par.id);
+    if(i1) i1.value=''; if(i2) i2.value=''; if(pv) pv.textContent='';
+  });
+}
+
+// ─── RENDER: ANÁLISIS ─────────────────────────────────────────────────────────
+function renderAnalisis() {
+  const cont = document.getElementById('analisis-content');
+  const cards = state.pares.map(par => {
+    const regs = (state.historial[par.id] || []).slice(-30);
+    const ratios = regs.map(r => r.ratio);
+    const stats = calcStats(ratios);
+    const ultimo = regs[regs.length-1];
+    const senal = (ultimo && stats) ? getSenal(ultimo.ratio, stats) : null;
+
+    const borderColor = senal
+      ? (senal.tipo==='COMPRAR' ? '#238636' : senal.tipo==='VENDER' ? '#da3633' : '#21262d')
+      : '#21262d';
+
+    let body = '';
+    if (ultimo) {
+      const z = stats ? ((ultimo.ratio - stats.media)/stats.std).toFixed(2) : '—';
+      const zColor = senal ? senal.color : '#8b949e';
+      body = `
+        <div class="grid-stats">
+          <div class="stat-box">
+            <div class="stat-label">Ratio actual</div>
+            <div class="stat-val" style="color:#e6edf3">${ultimo.ratio.toFixed(5)}</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">Media (${ratios.length}d)</div>
+            <div class="stat-val" style="color:#ffaa00">${stats ? stats.media.toFixed(5) : '—'}</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">Desv. Est.</div>
+            <div class="stat-val" style="color:#8b949e">${stats ? stats.std.toFixed(5) : '—'}</div>
+          </div>
+        </div>
+        <div class="chart-wrap">
+          <div style="font-size:10px;color:#8b949e;margin-bottom:4px">Últimos ${ratios.length} días</div>
+          ${stats ? miniChart(ratios, stats.media) : '<span style="color:#444;font-size:11px">Sin datos suficientes</span>'}
+          <div class="chart-legend"><span class="c1">— ratio</span>&nbsp;&nbsp;<span class="c2">- - media</span></div>
+        </div>
+        ${stats ? `<div class="range-line">Rango: ${stats.min.toFixed(5)} – ${stats.max.toFixed(5)} &nbsp;·&nbsp; Z-score: <span style="color:${zColor}">${z}</span></div>` : ''}
+      `;
+    } else {
+      body = `<div class="empty">Sin datos aún. Cargá precios en "Cargar Precios".</div>`;
+    }
+
+    const badgeHtml = senal
+      ? `<div class="signal-badge" style="color:${senal.color};background:${senal.bg};border-color:${senal.bc}">${senal.icon} ${senal.tipo} ${senal.fuerza}</div>`
+      : '';
+
+    return `
+      <div class="card" style="border-color:${borderColor}">
+        <div class="analysis-header">
+          <div class="pair-name">
+            <span>${par.cedear1}</span><span class="pair-sep">/</span><span>${par.cedear2}</span>
+          </div>
+          ${badgeHtml}
+        </div>
+        ${body}
+      </div>`;
+  }).join('');
+
+  cont.innerHTML = cards + `
+    <div class="legend-box">
+      <div class="title">📌 Cómo leer las señales</div>
+      <div><span style="color:#00ff88">▲ COMPRAR FUERTE</span> → Z &lt; -2: ratio muy por debajo de su media.</div>
+      <div><span style="color:#66ffaa">▲ COMPRAR DÉBIL</span> → Z entre -1 y -2: oportunidad moderada.</div>
+      <div><span style="color:#ff4466">▼ VENDER FUERTE</span> → Z &gt; 2: ratio muy por encima de su media.</div>
+      <div><span style="color:#888899">● NEUTRO</span> → Ratio cerca de la media histórica. Esperar.</div>
+    </div>`;
+}
+
+// ─── RENDER: HISTORIAL ────────────────────────────────────────────────────────
+function renderHistorial() {
+  const cont = document.getElementById('historial-content');
+  cont.innerHTML = state.pares.map(par => {
+    const regs = (state.historial[par.id] || []).slice().reverse().slice(0,20);
+    const rows = regs.length === 0
+      ? `<div class="no-data">Sin registros</div>`
+      : `<div class="table-wrap"><table>
+          <thead><tr>
+            <th>Fecha</th><th>${par.cedear1}</th><th>${par.cedear2}</th><th>Ratio</th>
+          </tr></thead>
+          <tbody>${regs.map(r => `<tr>
+            <td style="color:#8b949e">${r.fecha}</td>
+            <td>$${r.p1.toLocaleString('es-AR')}</td>
+            <td>$${r.p2.toLocaleString('es-AR')}</td>
+            <td style="color:#00ccff;font-weight:600">${r.ratio}</td>
+          </tr>`).join('')}</tbody>
+        </table></div>`;
+    return `<div class="hist-section">
+      <div class="hist-title">${par.cedear1} / ${par.cedear2}</div>
+      ${rows}
+    </div>`;
+  }).join('');
+}
+
+// ─── RENDER: PARES ────────────────────────────────────────────────────────────
+function renderPares() {
+  const cont = document.getElementById('pares-lista');
+  cont.innerHTML = state.pares.map(par => `
+    <div class="pair-row">
+      <span>${par.cedear1} <span style="color:#8b949e">/</span> ${par.cedear2}</span>
+      <button class="btn-delete" onclick="eliminarPar(${par.id})">Eliminar</button>
+    </div>
+  `).join('');
+}
+
+function agregarPar() {
+  const c1 = document.getElementById('nuevo-c1').value.trim().toUpperCase();
+  const c2 = document.getElementById('nuevo-c2').value.trim().toUpperCase();
+  if (!c1 || !c2) { toast('Completá ambos CEDEARs', 'err'); return; }
+  const nuevo = { id: Date.now(), cedear1: c1, cedear2: c2 };
+  state.pares.push(nuevo);
+  guardarEstado();
+  document.getElementById('nuevo-c1').value = '';
+  document.getElementById('nuevo-c2').value = '';
+  renderPares();
+  renderCargar();
+  toast('Par ' + c1 + '/' + c2 + ' agregado');
+}
+
+function eliminarPar(id) {
+  state.pares = state.pares.filter(p => p.id !== id);
+  guardarEstado();
+  renderPares();
+  renderCargar();
+  toast('Par eliminado');
+}
+
+function limpiarHistorial() {
+  if (!confirm('¿Borrar todo el historial de ratios?')) return;
+  state.historial = {};
+  guardarEstado();
+  renderHistorial();
+  toast('Historial borrado');
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+cargarEstado();
+renderCargar();
+</script>
+</body>
+</html>
